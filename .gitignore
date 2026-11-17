@@ -1,0 +1,8 @@
+.commandcode/
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.mypy_cache/
+.ruff_cache/
+.DS_Store

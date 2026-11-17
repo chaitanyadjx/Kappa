@@ -1,0 +1,14 @@
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.reweave-build/
+benchmark-results.json
+benchmark/data/
+benchmark/suites/
+benchmark/FixEval/
+benchmark/PyTy/
+benchmark/Sorald/
+benchmark/sorald-*.jar
+llm/.env
+demo/static/app.js

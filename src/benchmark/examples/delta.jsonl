@@ -1,0 +1,3 @@
+{"id":"fix-undefined","category":"identification","label":"good","code":"def total(values):\n    return sum_values(values)\n","code_after":"def total(values):\n    return sum(values)\n"}
+{"id":"fix-logic","category":"logic","label":"good","code":"def multiply(a, b):\n    return a + b\n","code_after":"def multiply(a, b):\n    return a * b\n","entry_point":"multiply","input_output":{"inputs":[[3,4]],"outputs":[12]}}
+{"id":"made-worse","category":"identification","label":"bad","code":"def add(a, b):\n    return a + b\n","code_after":"def add(a, b):\n    return a + undefined_helper(b)\n"}

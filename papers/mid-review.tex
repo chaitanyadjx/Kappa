@@ -1,0 +1,256 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=0.65in]{geometry}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{mathptmx}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlist[itemize]{leftmargin=1.2em,itemsep=1pt,topsep=1.5pt,partopsep=0pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=1.3em,itemsep=1pt,topsep=1.5pt,partopsep=0pt,parsep=0pt}
+\titleformat{\section}{\bfseries\fontsize{11.5}{13}\selectfont}{\thesection.}{0.4em}{}
+\titlespacing*{\section}{0pt}{4.5pt}{2pt}
+\titleformat{\subsection}{\bfseries\fontsize{10}{11.5}\selectfont}{\thesubsection}{0.4em}{}
+\titlespacing*{\subsection}{0pt}{3pt}{1.5pt}
+\renewcommand{\arraystretch}{1.12}
+
+\begin{document}
+
+% ================= PAGE 1: TITLE PAGE =================
+\begin{titlepage}
+\centering
+\vspace*{1.2cm}
+{\bfseries\fontsize{18}{22}\selectfont
+Reweaving the Repository:\\
+A Graph-Guided Framework for Detecting and Repairing\\
+Structural Violations in LLM-Generated Code\par}
+
+\vspace{1.1cm}
+{\itshape\fontsize{12}{15}\selectfont
+A Mid-Review Report submitted in partial fulfilment of the requirements\\
+for the award of the degree of\\
+\textbf{Bachelor of Technology in Artificial Intelligence and Data Science}\par}
+
+\vspace{1.2cm}
+{\fontsize{11}{14}\selectfont by\par}
+\vspace{0.3cm}
+{\fontsize{14}{17}\bfseries\selectfont Chaitanya Dhananjay Jambhulkar\par}
+{\fontsize{12}{15}\selectfont (Roll No: 123AD0045)\par}
+
+\vspace{1.2cm}
+{\fontsize{11}{14}\selectfont Under the Guidance of\par}
+\vspace{0.25cm}
+{\bfseries\fontsize{13}{16}\selectfont Dr. Alapan Kuila\par}
+{\fontsize{11}{14}\selectfont Assistant Professor, Dept. of Computer Science and Engineering\par}
+{\fontsize{11}{14}\selectfont IIITDM Kurnool\par}
+
+\vspace{0.9cm}
+\includegraphics[width=3.2cm]{download.jpeg}
+
+\vspace{0.9cm}
+{\bfseries\fontsize{12}{15}\selectfont
+DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING\\
+INDIAN INSTITUTE OF INFORMATION TECHNOLOGY,\\
+DESIGN AND MANUFACTURING KURNOOL\par}
+
+\vfill
+{\fontsize{11}{14}\selectfont Academic Year: 2026--2027\par}
+\vspace*{0.5cm}
+\end{titlepage}
+
+% ================= PAGE 2: FOUNDATIONS & PROBLEM =================
+\setcounter{page}{1}
+\fontsize{9.3}{11.2}\selectfont
+
+\section{Introduction}
+Large Language Models (LLMs) are now ubiquitous in automated code synthesis, delivering significant productivity gains across development lifecycles. However, current generation paradigms operate primarily within local contextual windows (individual functions or single files). Consequently, synthesized code frequently exhibits the \emph{patchwork problem}---appearing syntactically valid and locally functional in unit tests, yet failing catastrophically when integrated into complete software repositories.
+
+Repository-level failures include unresolved symbols, incorrect internal APIs, hallucinated dependencies, configuration mismatches, broken data schemas, control-flow errors, and missing authorization. Since software repositories contain interconnected imports, calls, configurations, routes, and security policies, function-level testing is insufficient. This research proposes a graph-guided framework for detecting and repairing such failures across multiple files.
+
+\section{Literature Review}
+\textbf{The Patchwork Problem in LLM-Generated Code}~\cite{patchwork} defines eight repository-level violation categories and models them with specialized global graphs. It detects inconsistencies that may evade unit tests and compilers, but does not address fault localization, patch synthesis, coordinated editing, or repair verification.
+
+\textbf{Deterministic AST Analysis}~\cite{astpaper} uses Abstract Syntax Trees and library introspection to correct invalid API names, parameters, and identifiers in Python. Its single-file scope prevents it from handling multi-module dataflows, configuration schemas, or distributed security rules.
+
+\textbf{MARIN}~\cite{marin} uses dependency trees to reduce external API hallucinations during generation. It focuses on prevention and API validity, offering no post-generation repair for schemas, resources, configuration, or route security.
+
+\textbf{CodePlan}~\cite{codeplan} plans multi-file edits using dependency graphs and change-impact analysis. It targets task completion and refactoring rather than anomaly repair, root-cause analysis, or validation against structural invariants.
+
+\section{Research Gaps}
+A review of existing work reveals five main gaps:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{No Repository Repair:} Repository-scale tools detect violations but generally leave patch creation to developers.
+  \item \textbf{Narrow Corrector Scope:} AST-based tools mainly handle single files and isolated library calls, not multi-module contracts or schemas.
+  \item \textbf{Weak Root-Cause Analysis:} Interface errors may be reported at consumers even when the defect is in a producer or transformer.
+  \item \textbf{Limited Coordinated Patching:} Structural fixes often require synchronized edits across source files, manifests, and configuration.
+  \item \textbf{Limited Candidate Verification:} Existing systems lack ranked repair alternatives, sandbox validation, and effective human review support.
+\end{enumerate}
+
+\section{Problem Statement and Structural Violation Taxonomy}
+The objective is to design and validate a graph-guided framework that uses static evidence to identify root causes, build localized subgraphs, generate coordinated repairs, and verify them in an isolated sandbox. It addresses eight structural violations:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Symbol Resolution Failure (SRF):} A class, function, or variable cannot be resolved across modules.
+  \item \textbf{Phantom Internal API (PIA):} An internal API is called with an invalid name, arity, or argument type.
+  \item \textbf{Dependency Hallucination (DHI):} An imported package is missing from the manifest or unavailable in public registries.
+  \item \textbf{Build/Configuration Incoherence (BCI):} Code uses undeclared variables, targets, or configuration keys.
+  \item \textbf{Resource Coherence Failure (RCF):} Code omits required fields, leaks resources, or violates data models.
+  \item \textbf{Control-Flow Coherence (CFC):} Code contains dead blocks, unreachable returns, contradictory conditions, or non-terminating loops.
+  \item \textbf{Cross-File Contract Violation (CCV):} Inter-module interfaces disagree on formats, parameters, or error handling.
+  \item \textbf{Security Structural Regression (SSR):} An endpoint bypasses required authentication or authorization controls.
+\end{enumerate}
+
+\newpage
+
+% ================= PAGE 3: METHODOLOGY & ARCHITECTURE =================
+\fontsize{9.3}{11.2}\selectfont
+
+\section{Proposed Solution Architecture}
+The framework separates global repository analysis from localized patch synthesis in two stages:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Stage 1: Detection and Evidence Normalization:} Static passes analyze global repository graphs. Each violation is converted into a compact \emph{Normalized Evidence Record}, which is then used to construct the relevant repair graph:
+  \begin{center}
+  \vspace{-2pt}
+  \framebox[\linewidth]{\small\ttfamily\begin{tabular}{@{}ll@{}}
+    \textbf{Evidence Schema:} & [Category, Subtype, Primary Source Loc, Related Locs, Violated Invariant, \\
+                              & \ Observed Value, Expected Value, Declarations, Dependent Findings]
+  \end{tabular}}
+  \vspace{-2pt}
+  \end{center}
+  \item \textbf{Stage 2: Graph-Guided Repair and Re-Verification:} The normalized evidence guides construction of a minimal sub-graph containing relevant declarations, call sites, and dependencies. The specialized module generates repair alternatives, applies selected alternatives to an isolated workspace, and reruns structural, build, and test checks.
+\end{enumerate}
+
+\section{Specialized Repair Graphs and Targeted Algorithms}
+To limit the search space, each violation domain is mapped to a dedicated repair graph and algorithm.
+
+\subsection{Dedicated Repair Graphs}
+Each repair module instantiates a compact typed sub-graph, as shown in Table~\ref{tab:repair_graphs}.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\caption{Specialized Repair Sub-Graph Specifications}
+\label{tab:repair_graphs}
+\begin{tabularx}{\textwidth}{l p{3.2cm} p{3.5cm} X}
+\toprule
+\textbf{Sub-Graph} & \textbf{Core Node Types} & \textbf{Directed Edge Relations} & \textbf{Structural Repair Scope} \\
+\midrule
+\textbf{SyRG} (Symbol Repair) & Unresolved symbol, candidate declarations, module exports & \texttt{may-resolve-to}, \texttt{declared-in}, \texttt{imported-from} & Discovers missing module exports, corrects renamed symbols, and inserts valid import declarations. \\
+\textbf{APRG} (API Repair) & Call site, invoked signature, candidate target signatures, adapters & \texttt{calls}, \texttt{compatible-with}, \texttt{adapted-by} & Reconciles call-site arity and argument types, maps deprecated signatures, or synthesizes adapter shims. \\
+\textbf{CDRG} (Config/Dep Repair) & Missing imports, package registries, manifest entries, config lookups & \texttt{requires}, \texttt{declared-by}, \texttt{available-in}, \texttt{replaces} & Synchronizes package manifests, updates lockfiles, and declares missing environment variables or keys. \\
+\textbf{MCRG} (Multi-Module Contract) & Producer endpoints, consumer callers, schema DTOs, data transformers & \texttt{produces}, \texttt{expects}, \texttt{maps-to}, \texttt{routes-through} & Reconciles cross-file payload schemas, corrects mismatched field keys, and aligns response status codes. \\
+\textbf{CFRG} (Control-Flow Repair) & Block entry, divergent branches, dead nodes, exception handlers & \texttt{flows-to}, \texttt{dominates}, \texttt{unreachable}, \texttt{replaces} & Prunes dead code blocks, restructures contradictory conditionals, and guarantees missing return branches. \\
+\textbf{SWRG} (Security Wiring Repair) & Route controllers, security guards, middleware chains, auth policies & \texttt{protected-by}, \texttt{requires-guard}, \texttt{exempted-by} & Rewires missing authentication middleware, attaches required role guards, and secures exposed endpoints. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Specialized Repair Algorithms}
+Six repair engines consume normalized evidence and traverse their sub-graphs to formulate repair alternatives. Where several alternatives are valid, the system returns the top $k$ graph-consistent choices to the reader:
+\begin{itemize}
+  \item \textbf{Symbol Resolution Repair (SRR):} Uses bipartite matching between unresolved symbols and declarations to resolve namespaces and imports.
+  \item \textbf{API Contract Repair (ACR):} Uses constraint matching between argument and parameter nodes to repair arity, types, positions, or wrappers.
+  \item \textbf{Configuration and Dependency Repair (CDR):} Uses dependency-graph reachability and cycle analysis to resolve packages, manifests, and configuration keys.
+  \item \textbf{Multi-Module Contract Repair (MCR):} Uses graph consistency checks and constraint propagation across producer, consumer, and transport paths.
+  \item \textbf{Control-Flow Repair (CFR):} Uses dominator and post-dominator analysis to find unreachable instructions, add returns, and restructure conditions.
+  \item \textbf{Security Wiring Repair (SWR):} Uses route-graph reachability and path-coverage analysis to add authentication, authorization, and role checks.
+\end{itemize}
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\caption{Operational Mapping of Violation Inputs to Repair Engines}
+\label{tab:repair_mapping}
+\begin{tabularx}{\textwidth}{>{\bfseries}l l l X}
+\toprule
+Algorithm & Targeted Violations & Underlying Graph & Concrete Remediation Action \\
+\midrule
+SRR & SRF & SyRG & Resolves missing symbols, repairs corrupted import paths, or updates export declarations. \\
+ACR & PIA & APRG & Aligns caller argument vectors with callee method signatures or wraps calls in inline adapters. \\
+CDR & DHI, BCI & CDRG & Updates build manifests, installs verified packages, and injects default configuration keys. \\
+MCR & RCF, CCV & MCRG & Coordinated multi-file realignment of producer payloads, consumer models, and serialization schemas. \\
+CFR & CFC, RCF (returns) & CFRG & Eliminates unreachable blocks, remedies unhandled exceptions, and synthesizes missing return statements. \\
+SWR & SSR, CCV (security) & SWRG & Injects missing route-level security decorators, JWT guards, and authorization middleware. \\
+\bottomrule
+\end{tabularx}
+\vspace{-4pt}
+\end{table}
+
+\newpage
+
+% ================= PAGE 4: WORKFLOW, EVALUATION & CONCLUSION =================
+\fontsize{9.3}{11.2}\selectfont
+
+\section{Repair Workflow and Verification Pipeline}
+The framework uses the following sandboxed repair lifecycle:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Detection \& Invariant Check:} Analyze the repository with graph passes to identify structural failures.
+  \item \textbf{Evidence Ingestion \& Normalization:} Convert diagnostics into a standard evidence record.
+  \item \textbf{Sub-Graph Instantiation:} Build the typed repair sub-graph around the defect.
+  \item \textbf{Candidate Synthesis:} Generate a bounded set of $k$ local or multi-file repair alternatives and return the top $k$ graph-consistent choices when multiple outputs remain.
+  \item \textbf{Graph Re-synthesis \& Re-verification:} Rebuild modified subgraphs and rerun all detection passes.
+  \item \textbf{Compilation \& Regression Testing:} Run parsing, type checks, compilation, and regression tests.
+  \item \textbf{Decision Gate \& Reviewer Presentation:} Accept a verified patch or present the top $k$ verified alternatives and their diffs for reader selection.
+\end{enumerate}
+
+\section{Benchmarking Methodology and Evaluation Metrics}
+Evaluation uses three balanced datasets:
+\begin{itemize}
+  \item \textbf{Real-World Historical Defects:} Structural regressions and multi-file commits from open-source repositories, using repository-level repair instances from SWE-bench~\cite{swebench} and established defect records from Defects4J~\cite{defects4j}.
+  \item \textbf{Empirical LLM Failure Benchmark:} Buggy repositories generated by frontier models on multi-file tasks, with the generated tasks and defects retained as an internal benchmark.
+  \item \textbf{Controlled Synthetic Mutations:} Mutated repository graphs with annotated root causes, generated from the selected repository instances.
+\end{itemize}
+
+\subsection{Evaluation Metrics}
+The primary metric is the \textbf{Verified Repair Rate (VRR)}, the proportion of defects resolved without regressions:
+\begin{equation}
+\text{VRR} = \frac{\sum_{i=1}^{N} \mathbb{I}\Big(\text{ViolationRemoved}_i \wedge \text{BuildPasses}_i \wedge \text{TestsPass}_i \wedge \neg\text{NewViolations}_i\Big)}{N}
+\end{equation}
+Additional metrics measure repair quality:
+\begin{itemize}
+  \item \textbf{Violation Removal Rate (ViRR):} Target violations eliminated by attempted repairs.
+  \item \textbf{Regression-Free Rate (RFR):} Repairs introducing no secondary violations or test regressions.
+  \item \textbf{Build Success Rate (BSR) \& Test Pass Rate (TPR):} Patched repositories that build and pass existing tests.
+  \item \textbf{Repair Precision (RP) \& Coverage (RC):} Sound repairs among attempts and detected violations repaired.
+  \item \textbf{Repair Minimality (RM):} Edit churn across lines, AST nodes, and files.
+  \item \textbf{Correct Abstention Rate (CAR):} Correctly withheld repairs in underconstrained cases.
+  \item \textbf{Repair Latency (RT):} Time for graph generation, candidate search, and verification.
+\end{itemize}
+
+\section{Current Progress and Project Roadmap}
+The current milestone defines the eight violation categories, six typed sub-graphs, and repair algorithms. The idealized methodology and algorithms are presented as a base version; they may change as implementation and evaluation reveal necessary modifications. The framework is graphical in nature, and future work will focus on graph construction, graph-based repair, sandbox verification, and benchmark evaluation.
+
+\section{Conclusion}
+LLMs enable fast code synthesis but often lack repository-level awareness. This work extends static detection with graph-guided, multi-candidate repair and sandbox re-verification. The presented methodology is a base version and may be refined as the implementation develops. It aims to resolve cross-file violations while retaining human review.
+
+\section{References}
+\begin{thebibliography}{9}\setlength{\itemsep}{0.5pt}\scriptsize
+\bibitem{patchwork} V. Mothukuri and R. M. Parizi, ``The Patchwork Problem in LLM-Generated Code,'' \emph{arXiv:2607.08981}, 2026.
+\bibitem{astpaper} ``Detecting and Correcting Hallucinations in LLM-Generated Code via Deterministic AST Analysis,'' \emph{arXiv:2601.19106}, 2026.
+\bibitem{marin} ``Towards Mitigating API Hallucination in Code Generated by LLMs with Hierarchical Dependency Aware,'' \emph{arXiv:2505.05057}, 2025.
+\bibitem{codeplan} R. Bairi et al., ``CodePlan: Repository-level Coding using LLMs and Planning,'' \emph{arXiv:2309.12499}, 2023.
+\bibitem{swebench} C. E. Jimenez et al., ``SWE-bench: Can Language Models Resolve Real-World GitHub Issues?'' \emph{International Conference on Learning Representations (ICLR)}, 2024.
+\bibitem{defects4j} R. Just, D. Jalali, and M. D. Ernst, ``Defects4J: A Database of Existing Faults to Enable Controlled Testing Studies for Java Programs,'' in \emph{Proceedings of the International Symposium on Software Testing and Analysis (ISSTA)}, 2014.
+\end{thebibliography}
+
+\vspace{0.3cm}
+\begin{flushright}
+\begin{minipage}{6.0cm}
+\rule{6.0cm}{0.4pt}\\[1pt]
+\textbf{Signature of the Guide}\\
+\textbf{Dr. Alapan Kuila}\\
+Assistant Professor, Dept. of Computer Science and Engineering\\
+IIITDM Kurnool\\
+Date: \rule{3.0cm}{0.4pt}
+\end{minipage}
+\end{flushright}
+
+\end{document}
+
+
